@@ -17,6 +17,9 @@
   <h3>代理规则设置</h3>
   <p>代理地址格式：http://host:port 或 https://host:port</p>
   <input type="text" id="proxyUrl" placeholder="http://localhost:1080">
+  <p>从 URL 加载规则（如 https://example.com/rules.txt），点击加载后显示在下方</p>
+  <input type="text" id="rulesUrl" placeholder="https://example.com/rules.txt">
+  <button id="fetchRules">加载规则</button>
   <p>每行一个规则，如 *.example.com（包含子域名），api*.com（匹配 api1.com）。仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，仅显示，不影响代理。</p>
   <div class="mode">
     <label><input type="radio" name="mode" value="whitelist" checked> 白名单（匹配不代理）</label>

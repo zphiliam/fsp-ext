@@ -3,19 +3,51 @@ let proxyUrl = "http://localhost:1080";
 let rules = ["*.cn", "*.qq.com", "*.baidu.com", "192.168.*.*"];
 let mode = "whitelist";
 
+// 全局存储图标和每个 tab 的上次图标
+let proxyIcon = null;
+let defaultIcon = null;
+// let lastIcon = {}; // 字典：{ tabId: icon }
+
+function init() {
+  createIcons();
+  // 设置默认图标
+  chrome.action.setIcon({ imageData: defaultIcon });
+  console.log(`Default icon set for all tab on initialization`);
+}
+
+init();
+
 // 转换为 Punycode（处理非 ASCII 主机名）
 function toPunycode(host) {
   try {
     return host.match(/^[a-zA-Z0-9.-]+$/) ? host : null; // 仅允许 ASCII
   } catch (e) {
-    console.warn(`Punycode conversion failed for host: ${host}`);
+    console.log(`Punycode conversion failed for host: ${host}`);
     return null;
   }
 }
 
+// 创建图标（只调用一次）
+function createIcons() {
+  function createSingleIcon(isProxy) {
+    const canvas = new OffscreenCanvas(32, 32);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = isProxy ? "green" : "gray";
+    ctx.fillRect(0, 0, 32, 32);
+    ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("F", 16, 16);
+    return ctx.getImageData(0, 0, 32, 32);
+  }
+  proxyIcon = { "32": createSingleIcon(true) };
+  defaultIcon = { "32": createSingleIcon(false) };
+  console.log("Icons created");
+}
+
 // 生成 PAC 脚本
 function generatePacScript(proxyUrl, rules, mode) {
-  // 解析代理地址
   let proxyHost = "localhost";
   let proxyPort = 1080;
   let proxyScheme = "http";
@@ -29,16 +61,15 @@ function generatePacScript(proxyUrl, rules, mode) {
     if (!proxyPort || proxyPort < 1 || proxyPort > 65535) throw new Error("Invalid port");
     console.log(`PAC: Proxy ${proxyScheme}://${proxyHost}:${proxyPort}`);
   } catch (e) {
-    console.warn(`Invalid proxy URL: ${proxyUrl}, error: ${e.message}, using default http://localhost:1080`);
+    console.log(`Invalid proxy URL: ${proxyUrl}, error: ${e.message}, using default http://localhost:1080`);
     proxyHost = "localhost";
     proxyPort = 1080;
     proxyScheme = "http";
   }
 
-  // 转换为 PAC 规则
   const pacRules = rules.map(pattern => {
     if (!pattern.match(/^[a-zA-Z0-9*.?-]+$/)) {
-      console.warn(`Skipping non-ASCII rule: ${pattern}`);
+      console.log(`Skipping non-ASCII rule: ${pattern}`);
       return null;
     }
     if (pattern.startsWith("*.")) {
@@ -49,7 +80,6 @@ function generatePacScript(proxyUrl, rules, mode) {
     return `host.match(/^${regexStr}$/)`;
   }).filter(rule => rule !== null);
 
-  // PAC 脚本（纯 ASCII）
   const pacScript = `
     var cache = {};
     var tempCount = 0;
@@ -57,6 +87,9 @@ function generatePacScript(proxyUrl, rules, mode) {
       tempCount++;
       if (host in cache) {
         return cache[host];
+      }
+      if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+        return "DIRECT";
       }
       var matched = ${pacRules.length > 0 ? pacRules.join(" || ") : "false"};
       var isProxy = ${mode === "whitelist" ? "!matched" : "matched"};
@@ -96,7 +129,7 @@ function setPacScript(proxyUrl, rules, mode) {
 // 验证规则
 function isValidPattern(pattern) {
   const isValid = pattern && /^[a-zA-Z0-9*.?-]+$/.test(pattern) && pattern.length <= 255;
-  if (!isValid) console.warn(`Invalid rule pattern: ${pattern}`);
+  if (!isValid) console.log(`Invalid rule pattern: ${pattern}`);
   return isValid;
 }
 
@@ -116,6 +149,7 @@ chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules"], (data) => {
     console.log(`Loaded proxy: ${proxyUrl}`);
   }
   setPacScript(proxyUrl, rules, mode);
+
 });
 
 // 监听存储变化
@@ -142,4 +176,96 @@ chrome.storage.onChanged.addListener((changes, area) => {
       setPacScript(proxyUrl, rules, mode);
     }
   }
+});
+
+// 新功能：监听 URL 并动态更改图标
+function evaluateProxyForUrl(url, host) {
+  let proxyHost = "localhost";
+  let proxyPort = 1080;
+  try {
+    const urlObj = new URL(proxyUrl);
+    proxyHost = toPunycode(urlObj.hostname);
+    proxyPort = parseInt(urlObj.port, 10) || 1080;
+  } catch (e) {
+    console.log(`Error parsing proxy URL for icon logic: ${e.message}`);
+  }
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+    return "DIRECT";
+  }
+  const matched = rules.some(pattern => {
+    if (!pattern.match(/^[a-zA-Z0-9*.?-]+$/)) return false;
+    if (pattern.startsWith("*.")) {
+      const base = pattern.slice(2);
+      return host === base || host.endsWith(`.${base}`);
+    }
+    const regexStr = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");
+    return new RegExp(`^${regexStr}$`).test(host);
+  });
+
+  const isProxy = mode === "whitelist" ? !matched : matched;
+  return isProxy ? `PROXY ${proxyHost}:${proxyPort}` : "DIRECT";
+}
+
+// 更新图标
+function updateIconForTab(tabId, url) {
+  let newIcon;
+  // 处理 new tab (about:blank) 和 extension pages (chrome://)
+  if (!url || url === "about:blank" || url.startsWith("chrome://")||url.startsWith("edge://")) {
+    console.log(`Special URL, using default icon: ${url || "no URL"}`);
+    newIcon = defaultIcon;
+  } else {
+    let host;
+    try {
+      host = new URL(url).hostname;
+    } catch (e) {
+      console.log(`Invalid URL, using default icon: ${url}`);
+      newIcon = defaultIcon;
+    }
+
+    if (host) {
+      const result = evaluateProxyForUrl(url, host);
+      const isProxy = result.startsWith("PROXY");
+      console.log(`URL ${url} uses ${result}`);
+      newIcon = isProxy ? proxyIcon : defaultIcon;
+      console.log(`host: ${host}, result: ${result}, proxyIcon: ${isProxy}`);
+    }
+  }
+
+  chrome.action.setIcon({ imageData: newIcon, tabId });
+  console.log(`Icon updated to ${newIcon === proxyIcon ? "proxy" : "default"} for tab ${tabId},url: ${url}`);
+}
+
+// 监听 Tab 切换
+chrome.tabs.onActivated.addListener(activeInfo => {
+  chrome.tabs.get(activeInfo.tabId, tab => {
+    if (chrome.runtime.lastError) {
+      console.log(`Failed to get tab ${activeInfo.tabId}: ${chrome.runtime.lastError.message}`);
+      return;
+    }
+    console.log(`Tab activated, tab ${activeInfo.tabId}, url: ${tab.url}`); 
+    updateIconForTab(activeInfo.tabId, tab.url || "");
+  });
+});
+
+
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId === 0) {
+      console.log(`WebNavigation onBeforeNavigate, tab ${details.tabId}, url: ${details.url}`);  
+      updateIconForTab(details.tabId, details.url || "");
+    }
+  },
+);
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === "loading") {
+      console.log(`Tab updated, tab ${tabId}, url: ${tab.url}`);
+      updateIconForTab(tabId, tab.url || "");
+    }
+  },
+);  
+
+// 监听 Tab 关闭
+chrome.tabs.onRemoved.addListener(tabId => {
+  // delete lastIcon[tabId];
+  console.log(`Tab ${tabId} closed, removed from lastIcon`);
 });

@@ -1,17 +1,17 @@
 document.addEventListener("DOMContentLoaded", () => {
     const rulesInput = document.getElementById("rules");
     const proxyInput = document.getElementById("proxyUrl");
+    const rulesUrlInput = document.getElementById("rulesUrl");
+    const fetchButton = document.getElementById("fetchRules");
     const saveButton = document.getElementById("save");
     const modeInputs = document.querySelectorAll('input[name="mode"]');
   
-    // 验证规则
     function isValidPattern(pattern) {
       const isValid = pattern && /^[a-zA-Z0-9*.?-]+$/.test(pattern) && pattern.length <= 255;
       if (!isValid) console.warn(`Invalid rule pattern: ${pattern}`);
       return isValid;
     }
   
-    // 验证代理地址
     function isValidProxyUrl(url) {
       try {
         const parsed = new URL(url);
@@ -28,8 +28,43 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   
-    // 加载配置
-    chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules"], (data) => {
+    function isValidRulesUrl(url) {
+      try {
+        const parsed = new URL(url);
+        return ["http", "https"].includes(parsed.protocol.replace(":", "").toLowerCase());
+      } catch {
+        return false;
+      }
+    }
+  
+    async function fetchRules() {
+      const url = rulesUrlInput.value.trim();
+      if (!url) {
+        alert("请输入规则文件的 URL");
+        return;
+      }
+      if (!isValidRulesUrl(url)) {
+        alert("无效的 URL，仅支持 http:// 或 https:// 协议");
+        return;
+      }
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+        const text = await response.text();
+        if (!text.trim()) {
+          alert("规则文件为空");
+          return;
+        }
+        rulesInput.value = text;
+        console.log(`Fetched rules from ${url}:\n${text}`);
+        alert("规则已加载到输入框，请检查并保存");
+      } catch (e) {
+        console.error(`Failed to fetch rules from ${url}: ${e.message}`);
+        alert(`加载规则失败：${e.message}`);
+      }
+    }
+  
+    chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules", "rulesUrl"], (data) => {
       console.log("Loading popup config...");
       if (data.rawRules) {
         rulesInput.value = data.rawRules;
@@ -48,9 +83,14 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         proxyInput.value = "http://localhost:1080";
       }
+      if (data.rulesUrl) {
+        rulesUrlInput.value = data.rulesUrl;
+        console.log(`Loaded rules URL: ${data.rulesUrl}`);
+      }
     });
   
-    // 保存配置
+    fetchButton.addEventListener("click", fetchRules);
+  
     saveButton.addEventListener("click", () => {
       const rawRules = rulesInput.value;
       const rules = rawRules
@@ -66,20 +106,27 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const proxyUrl = proxyInput.value.trim();
-      
+      const rulesUrl = rulesUrlInput.value.trim();
+  
       const config = { rules, mode, rawRules };
       if (isValidProxyUrl(proxyUrl)) {
         config.proxyUrl = proxyUrl;
       } else if (proxyUrl) {
-        console.warn(`Invalid proxy URL: ${proxyUrl}`);
+        console.log(`Invalid proxy URL: ${proxyUrl}`);
         alert("代理地址无效，将使用默认 http://localhost:1080");
       }
-      
-      console.log(`Saving config: rules=${rules.join(", ")}, mode=${mode}, proxy=${config.proxyUrl || "default"}`);
+      if (rulesUrl && isValidRulesUrl(rulesUrl)) {
+        config.rulesUrl = rulesUrl;
+      } else if (rulesUrl) {
+        console.log(`Invalid rules URL: ${rulesUrl}`);
+        alert("规则 URL 无效，将不保存");
+      }
+  
+      console.log(`Saving config: rules=${rules.join(", ")}, mode=${mode}, proxy=${config.proxyUrl || "default"}, rulesUrl=${config.rulesUrl || "none"}`);
       chrome.storage.local.set(config, () => {
         console.log("Config saved");
-        chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules"], (data) => {
-          console.log(`Stored config: rules=${(data.rules || []).join(", ")}, rawRules=${data.rawRules}, mode=${data.mode}, proxy=${data.proxyUrl || "default"}`);
+        chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules", "rulesUrl"], (data) => {
+          console.log(`Stored config: rules=${(data.rules || []).join(", ")}, rawRules=${data.rawRules}, mode=${data.mode}, proxy=${data.proxyUrl || "default"}, rulesUrl=${data.rulesUrl || "none"}`);
         });
         if (rules.length < rawRules.split("\n").filter(line => line.trim()).length) {
           alert("已保存配置，注释或无效规则被忽略，仅显示在输入框！");
