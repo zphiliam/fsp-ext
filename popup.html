@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>动态代理设置</title>
+  <style>
+    body { width: 400px; padding: 10px; font-family: Arial; }
+    textarea { width: 100%; height: 150px; resize: vertical; }
+    input[type="text"] { width: 100%; padding: 5px; margin: 5px 0; }
+    button { margin: 10px 5px; padding: 5px 10px; }
+    .mode { display: flex; justify-content: space-between; }
+    label { margin-right: 10px; }
+    p { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h3>代理规则设置</h3>
+  <p>代理地址格式：http://host:port 或 https://host:port</p>
+  <input type="text" id="proxyUrl" placeholder="http://localhost:1080">
+  <p>每行一个规则，如 *.example.com（包含子域名），api*.com（匹配 api1.com）。仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，仅显示，不影响代理。</p>
+  <div class="mode">
+    <label><input type="radio" name="mode" value="whitelist" checked> 白名单（匹配不代理）</label>
+    <label><input type="radio" name="mode" value="blacklist"> 黑名单（匹配代理）</label>
+  </div>
+  <textarea id="rules" placeholder="*.example.com\n# comment"></textarea>
+  <button id="save">保存</button>
+  <script src="popup.js"></script>
+</body>
+</html>

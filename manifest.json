@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "动态代理扩展",
+    "version": "1.0",
+    "description": "使用 PAC 脚本根据黑白名单动态设置代理，支持通配符规则",
+    "permissions": [
+      "proxy",
+      "storage"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
