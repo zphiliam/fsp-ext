@@ -1,12 +1,11 @@
 // 默认代理地址
-let proxyUrl = "http://localhost:1080";
+let proxyUrl = "http://localhost:7890";
 let rules = ["*.cn", "*.qq.com", "*.baidu.com", "192.168.*.*"];
 let mode = "whitelist";
 
-// 全局存储图标和每个 tab 的上次图标
+// 全局存储图标
 let proxyIcon = null;
 let defaultIcon = null;
-// let lastIcon = {}; // 字典：{ tabId: icon }
 
 function init() {
   createIcons();
@@ -49,7 +48,7 @@ function createIcons() {
 // 生成 PAC 脚本
 function generatePacScript(proxyUrl, rules, mode) {
   let proxyHost = "localhost";
-  let proxyPort = 1080;
+  let proxyPort = 7890;
   let proxyScheme = "http";
   try {
     const url = new URL(proxyUrl);
@@ -61,9 +60,9 @@ function generatePacScript(proxyUrl, rules, mode) {
     if (!proxyPort || proxyPort < 1 || proxyPort > 65535) throw new Error("Invalid port");
     console.log(`PAC: Proxy ${proxyScheme}://${proxyHost}:${proxyPort}`);
   } catch (e) {
-    console.log(`Invalid proxy URL: ${proxyUrl}, error: ${e.message}, using default http://localhost:1080`);
+    console.log(`Invalid proxy URL: ${proxyUrl}, error: ${e.message}, using default http://localhost:7890`);
     proxyHost = "localhost";
-    proxyPort = 1080;
+    proxyPort = 7890;
     proxyScheme = "http";
   }
 
@@ -168,7 +167,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       needsUpdate = true;
     }
     if (changes.proxyUrl) {
-      proxyUrl = changes.proxyUrl.newValue || "http://localhost:1080";
+      proxyUrl = changes.proxyUrl.newValue || "http://localhost:7890";
       console.log(`Proxy updated: ${proxyUrl}`);
       needsUpdate = true;
     }
@@ -181,11 +180,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // 新功能：监听 URL 并动态更改图标
 function evaluateProxyForUrl(url, host) {
   let proxyHost = "localhost";
-  let proxyPort = 1080;
+  let proxyPort = 7890;
   try {
     const urlObj = new URL(proxyUrl);
     proxyHost = toPunycode(urlObj.hostname);
-    proxyPort = parseInt(urlObj.port, 10) || 1080;
+    proxyPort = parseInt(urlObj.port, 10) || 7890;
   } catch (e) {
     console.log(`Error parsing proxy URL for icon logic: ${e.message}`);
   }
@@ -266,6 +265,5 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // 监听 Tab 关闭
 chrome.tabs.onRemoved.addListener(tabId => {
-  // delete lastIcon[tabId];
   console.log(`Tab ${tabId} closed, removed from lastIcon`);
 });

@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
     function isValidPattern(pattern) {
       const isValid = pattern && /^[a-zA-Z0-9*.?-]+$/.test(pattern) && pattern.length <= 255;
-      if (!isValid) console.warn(`Invalid rule pattern: ${pattern}`);
+      if (!isValid) console.log(`Invalid rule pattern: ${pattern}`);
       return isValid;
     }
   
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
         proxyInput.value = data.proxyUrl;
         console.log(`Loaded proxy: ${data.proxyUrl}`);
       } else {
-        proxyInput.value = "http://localhost:1080";
+        proxyInput.value = "http://localhost:7890";
       }
       if (data.rulesUrl) {
         rulesUrlInput.value = data.rulesUrl;
@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
         config.proxyUrl = proxyUrl;
       } else if (proxyUrl) {
         console.log(`Invalid proxy URL: ${proxyUrl}`);
-        alert("代理地址无效，将使用默认 http://localhost:1080");
+        alert("代理地址无效，将使用默认 http://localhost:7890");
       }
       if (rulesUrl && isValidRulesUrl(rulesUrl)) {
         config.rulesUrl = rulesUrl;
