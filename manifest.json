@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "FastSimpleProxy 简单快速的动态代理",
-    "version": "1.0",
-    "description": "使用 PAC 脚本根据黑白名单动态设置代理，支持通配符规则",
+    "version": "1.1",
+    "description": "根据黑白名单动态设置代理，支持通配符规则",
     "permissions": [
       "proxy",
       "storage",
@@ -19,5 +19,11 @@
     },
     "action": {
       "default_popup": "popup.html"
-    }
+    },
+    "icons": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+  }
   }

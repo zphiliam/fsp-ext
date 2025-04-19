@@ -62,6 +62,13 @@
       margin-bottom: 16px;
     }
 
+    .help-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+
     .proxy-status {
       display: flex;
       align-items: center;
@@ -195,7 +202,7 @@
       <div class="proxy-status">
         <span class="status-label">启用代理</span>
         <label class="toggle-switch">
-          <input type="checkbox" id="proxyEnabled" checked>
+          <input type="checkbox" id="proxyEnabled">
           <span class="slider"></span>
         </label>
       </div>
@@ -203,10 +210,14 @@
     </div>
 
     <div class="mode-selector">
-      <div class="mode-option active" data-mode="whitelist">白名单模式</div>
-      <div class="mode-option" data-mode="blacklist">黑名单模式</div>
+      <div class="mode-option active" data-mode="whitelist" title="白名单中的域名直连，其他一律走代理">白名单模式</div>
+      <div class="mode-option" data-mode="blacklist" title="黑名单中的域名走代理，其他一律直连">黑名单模式</div>
     </div>
-
+    <div class="help-text">
+      白名单模式：白名单中的直连，其他一律走代理
+      <br>
+      黑名单模式：黑名单中的走代理，其他一律直连
+    </div>
     <button class="button primary-button" id="openSettings">详细设置</button>
     <div style="height: 8px;"></div>
     <button class="button secondary-button hidden" id="showRules">查看当前规则</button>

@@ -4,11 +4,13 @@ let whitelistRules = [];
 let blacklistRules = [];
 let currentRules = [];
 let mode = "whitelist";
-let proxyEnabled = true;
+let proxyEnabled = false;
 
 // Global icons storage
 let proxyIcon = null;
 let defaultIcon = null;
+let proxyTitle = "当前网页使用了代理";
+let defaultTitle = "当前网页未使用代理";
 
 // Initialize extension
 function init() {
@@ -374,6 +376,7 @@ function updateIconForTab(tabId, url) {
   }
 
   chrome.action.setIcon({ imageData: newIcon, tabId });
+  chrome.action.setTitle({ title: newIcon === proxyIcon ? proxyTitle : defaultTitle, tabId });
   console.log(`Icon updated to ${newIcon === proxyIcon ? "proxy" : "default"} for tab ${tabId}, url: ${url}`);
 }
 
