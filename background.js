@@ -128,9 +128,16 @@ function generatePacScript(proxyUrl, rules, mode) {
       return null;
     }
     
+    // New logic for ".domain.com" pattern (match domain and subdomains)
+    if (pattern.startsWith(".")) {
+      const base = pattern.slice(1);
+      return `(host === "${base}" || host.endsWith("${pattern}"))`;
+    }
+    
+    // Updated logic for "*.domain.com" pattern (match only subdomains)
     if (pattern.startsWith("*.")) {
       const base = pattern.slice(2);
-      return `(host === "${base}" || host.endsWith(".${base}"))`;
+      return `host.endsWith(".${base}")`;
     }
     
     const regexStr = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");
@@ -213,6 +220,7 @@ function updateProxySettings() {
 
 // Validate rule pattern
 function isValidPattern(pattern) {
+  // Allow patterns starting with a dot (.)
   const isValid = pattern && /^[a-zA-Z0-9*.?-]+$/.test(pattern) && pattern.length <= 255;
   if (!isValid) console.log(`Invalid rule pattern: ${pattern}`);
   return isValid;
@@ -291,6 +299,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true; // Keep the message channel open for async response
 });
 
+
 // Evaluate proxy for URL
 function evaluateProxyForUrl(url, host) {
   if (!proxyEnabled) {
@@ -315,9 +324,16 @@ function evaluateProxyForUrl(url, host) {
   const matched = currentRules.some(pattern => {
     if (!pattern.match(/^[a-zA-Z0-9*.?-]+$/)) return false;
     
+    // New logic for ".domain.com" pattern
+    if (pattern.startsWith(".")) {
+      const base = pattern.slice(1);
+      return host === base || host.endsWith(pattern);
+    }
+    
+    // Updated logic for "*.domain.com" pattern
     if (pattern.startsWith("*.")) {
       const base = pattern.slice(2);
-      return host === base || host.endsWith(`.${base}`);
+      return host.endsWith(`.${base}`);
     }
     
     const regexStr = pattern.replace(/\./g, "\\.").replace(/\*/g, ".*").replace(/\?/g, ".");

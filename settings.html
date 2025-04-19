@@ -235,8 +235,12 @@
         
         <div class="form-group">
           <label class="form-label" for="whitelistRules">白名单规则</label>
-          <textarea id="whitelistRules" placeholder="*.example.com&#10;# 匹配 example.com 及其所有子域名"></textarea>
-          <div class="help-text">每行一个规则，如 *.example.com（匹配域名本身及子域名），api*.com（匹配 api1.com）。仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，规则会被保存但不会生效。</div>
+          <textarea id="whitelistRules" placeholder="*.example.com&#10;.example.com&#10;# 注释示例"></textarea>
+          <div class="help-text">每行一个规则，特殊匹配格式：
+            <br>- <code>*.example.com</code>：仅匹配子域名（如 sub.example.com），不匹配 example.com 本身
+            <br>- <code>.example.com</code>：同时匹配域名本身及所有子域名
+            <br>- <code>api*.com</code>：匹配如 api1.com 的域名
+            <br>仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，规则会被保存但不会生效。</div>
         </div>
       </div>
       
@@ -252,8 +256,12 @@
         
         <div class="form-group">
           <label class="form-label" for="blacklistRules">黑名单规则</label>
-          <textarea id="blacklistRules" placeholder="*.example.com&#10;# 匹配 example.com 及其所有子域名"></textarea>
-          <div class="help-text">每行一个规则，如 *.example.com（匹配域名本身及子域名），api*.com（匹配 api1.com）。仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，规则会被保存但不会生效。</div>
+          <textarea id="blacklistRules" placeholder="*.example.com&#10;.example.com&#10;# 注释示例"></textarea>
+          <div class="help-text">每行一个规则，特殊匹配格式：
+            <br>- <code>*.example.com</code>：仅匹配子域名（如 sub.example.com），不匹配 example.com 本身
+            <br>- <code>.example.com</code>：同时匹配域名本身及所有子域名
+            <br>- <code>api*.com</code>：匹配如 api1.com 的域名
+            <br>仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，规则会被保存但不会生效。</div>
         </div>
       </div>
       

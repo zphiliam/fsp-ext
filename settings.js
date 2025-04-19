@@ -20,11 +20,29 @@ document.addEventListener("DOMContentLoaded", () => {
         tabs.forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         
+        let temp = "";
         // Update active content
         tabContents.forEach(content => {
           content.classList.remove("active");
           if (content.id === `${tabId}-tab`) {
-            content.classList.add("active");
+            // 防止数据过大卡顿，使用异步加载
+            if(tabId=="whitelist"){
+                temp = whitelistRulesInput.value
+                whitelistRulesInput.value = "数据加载中。。。";
+                content.classList.add("active");
+                
+                setTimeout(() => {
+                    whitelistRulesInput.value = temp;
+                }, 1);
+            }else{
+                temp = blacklistRulesInput.value
+                blacklistRulesInput.value = "数据加载中。。。";
+                content.classList.add("active");
+                setTimeout(() => {
+                    blacklistRulesInput.value = temp;
+                }, 1);
+            }
+
           }
         });
       });
@@ -32,10 +50,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
     // Rule validation
     function isValidPattern(pattern) {
+      // Allow patterns starting with a dot (.)
       const isValid = pattern && /^[a-zA-Z0-9*.?-]+$/.test(pattern) && pattern.length <= 255;
-      if (!isValid && pattern && !/^[#;\/\[]/.test(pattern)) {
-        console.log(`Invalid rule pattern: ${pattern}`);
-      }
+      if (!isValid) console.log(`Invalid rule pattern: ${pattern}`);
       return isValid;
     }
   
