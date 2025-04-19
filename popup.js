@@ -1,138 +1,159 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const rulesInput = document.getElementById("rules");
-    const proxyInput = document.getElementById("proxyUrl");
-    const rulesUrlInput = document.getElementById("rulesUrl");
-    const fetchButton = document.getElementById("fetchRules");
-    const saveButton = document.getElementById("save");
-    const modeInputs = document.querySelectorAll('input[name="mode"]');
-  
-    function isValidPattern(pattern) {
-      const isValid = pattern && /^[a-zA-Z0-9*.?-]+$/.test(pattern) && pattern.length <= 255;
-      if (!isValid) console.log(`Invalid rule pattern: ${pattern}`);
-      return isValid;
+  const proxyEnabledToggle = document.getElementById("proxyEnabled");
+  const proxyUrlDisplay = document.getElementById("proxyUrlDisplay");
+  const modeOptions = document.querySelectorAll(".mode-option");
+  const openSettingsButton = document.getElementById("openSettings");
+  const showRulesButton = document.getElementById("showRules");
+
+  // Initialize state
+  let proxyEnabled = true;
+  let currentMode = "whitelist";
+  let proxyUrl = "http://localhost:7890";
+  let whitelistRules = [];
+  let blacklistRules = [];
+  let whitelistRawRules = "";
+  let blacklistRawRules = "";
+
+  // Load saved configuration
+  chrome.storage.local.get([
+    "proxyEnabled", 
+    "mode", 
+    "proxyUrl", 
+    "whitelistRules", 
+    "blacklistRules", 
+    "whitelistRawRules", 
+    "blacklistRawRules"
+  ], (data) => {
+    console.log("Loading popup config...");
+    
+    // Set proxy enabled state
+    if (data.proxyEnabled !== undefined) {
+      proxyEnabled = data.proxyEnabled;
+      proxyEnabledToggle.checked = proxyEnabled;
+      console.log(`Loaded proxy enabled: ${proxyEnabled}`);
     }
-  
-    function isValidProxyUrl(url) {
-      try {
-        const parsed = new URL(url);
-        const scheme = parsed.protocol.replace(":", "").toLowerCase();
-        const port = parseInt(parsed.port, 10);
-        return (
-          ["http", "https"].includes(scheme) &&
-          parsed.hostname &&
-          port >= 1 &&
-          port <= 65535
-        );
-      } catch {
-        return false;
-      }
+    
+    // Set proxy mode (whitelist/blacklist)
+    if (data.mode) {
+      currentMode = data.mode;
+      updateModeUI(currentMode);
+      console.log(`Loaded mode: ${currentMode}`);
     }
-  
-    function isValidRulesUrl(url) {
-      try {
-        const parsed = new URL(url);
-        return ["http", "https"].includes(parsed.protocol.replace(":", "").toLowerCase());
-      } catch {
-        return false;
-      }
+    
+    // Set proxy URL
+    if (data.proxyUrl) {
+      proxyUrl = data.proxyUrl;
+      proxyUrlDisplay.textContent = proxyUrl;
+      console.log(`Loaded proxy: ${proxyUrl}`);
     }
-  
-    async function fetchRules() {
-      const url = rulesUrlInput.value.trim();
-      if (!url) {
-        alert("请输入规则文件的 URL");
-        return;
-      }
-      if (!isValidRulesUrl(url)) {
-        alert("无效的 URL，仅支持 http:// 或 https:// 协议");
-        return;
-      }
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-        const text = await response.text();
-        if (!text.trim()) {
-          alert("规则文件为空");
-          return;
-        }
-        rulesInput.value = text;
-        console.log(`Fetched rules from ${url}:\n${text}`);
-        alert("规则已加载到输入框，请检查并保存");
-      } catch (e) {
-        console.error(`Failed to fetch rules from ${url}: ${e.message}`);
-        alert(`加载规则失败：${e.message}`);
-      }
+    
+    // Load rules
+    if (data.whitelistRules) {
+      whitelistRules = data.whitelistRules;
+      console.log(`Loaded whitelist rules: ${whitelistRules.length} rules`);
     }
-  
-    chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules", "rulesUrl"], (data) => {
-      console.log("Loading popup config...");
-      if (data.rawRules) {
-        rulesInput.value = data.rawRules;
-        console.log(`Loaded raw rules: ${data.rawRules}`);
-      } else if (data.rules) {
-        rulesInput.value = data.rules.join("\n");
-        console.log(`Loaded rules: ${data.rules.join(", ")}`);
-      }
-      if (data.mode) {
-        document.querySelector(`input[value="${data.mode}"]`).checked = true;
-        console.log(`Loaded mode: ${data.mode}`);
-      }
-      if (data.proxyUrl) {
-        proxyInput.value = data.proxyUrl;
-        console.log(`Loaded proxy: ${data.proxyUrl}`);
-      } else {
-        proxyInput.value = "http://localhost:7890";
-      }
-      if (data.rulesUrl) {
-        rulesUrlInput.value = data.rulesUrl;
-        console.log(`Loaded rules URL: ${data.rulesUrl}`);
-      }
-    });
-  
-    fetchButton.addEventListener("click", fetchRules);
-  
-    saveButton.addEventListener("click", () => {
-      const rawRules = rulesInput.value;
-      const rules = rawRules
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => {
-          if (!line) return false;
-          if (line.startsWith("#") || line.startsWith(";") || line.startsWith("//") || line.startsWith("[")) {
-            console.log(`Ignoring comment line: ${line}`);
-            return false;
-          }
-          return isValidPattern(line);
-        });
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      const proxyUrl = proxyInput.value.trim();
-      const rulesUrl = rulesUrlInput.value.trim();
-  
-      const config = { rules, mode, rawRules };
-      if (isValidProxyUrl(proxyUrl)) {
-        config.proxyUrl = proxyUrl;
-      } else if (proxyUrl) {
-        console.log(`Invalid proxy URL: ${proxyUrl}`);
-        alert("代理地址无效，将使用默认 http://localhost:7890");
-      }
-      if (rulesUrl && isValidRulesUrl(rulesUrl)) {
-        config.rulesUrl = rulesUrl;
-      } else if (rulesUrl) {
-        console.log(`Invalid rules URL: ${rulesUrl}`);
-        alert("规则 URL 无效，将不保存");
-      }
-  
-      console.log(`Saving config: rules=${rules.join(", ")}, mode=${mode}, proxy=${config.proxyUrl || "default"}, rulesUrl=${config.rulesUrl || "none"}`);
-      chrome.storage.local.set(config, () => {
-        console.log("Config saved");
-        chrome.storage.local.get(["rules", "mode", "proxyUrl", "rawRules", "rulesUrl"], (data) => {
-          console.log(`Stored config: rules=${(data.rules || []).join(", ")}, rawRules=${data.rawRules}, mode=${data.mode}, proxy=${data.proxyUrl || "default"}, rulesUrl=${data.rulesUrl || "none"}`);
-        });
-        if (rules.length < rawRules.split("\n").filter(line => line.trim()).length) {
-          alert("已保存配置，注释或无效规则被忽略，仅显示在输入框！");
-        } else {
-          alert("配置已保存！");
-        }
-      });
+    
+    if (data.blacklistRules) {
+      blacklistRules = data.blacklistRules;
+      console.log(`Loaded blacklist rules: ${blacklistRules.length} rules`);
+    }
+    
+    if (data.whitelistRawRules) {
+      whitelistRawRules = data.whitelistRawRules;
+    }
+    
+    if (data.blacklistRawRules) {
+      blacklistRawRules = data.blacklistRawRules;
+    }
+    
+    // Update proxy state
+    updateProxyState();
+  });
+
+  // Toggle proxy enabled/disabled
+  proxyEnabledToggle.addEventListener("change", () => {
+    proxyEnabled = proxyEnabledToggle.checked;
+    console.log(`Proxy enabled changed to: ${proxyEnabled}`);
+    
+    chrome.storage.local.set({ proxyEnabled }, () => {
+      console.log("Proxy enabled state saved");
+      updateProxyState();
     });
   });
+
+  // Mode selector
+  modeOptions.forEach(option => {
+    option.addEventListener("click", () => {
+      const newMode = option.getAttribute("data-mode");
+      if (newMode !== currentMode) {
+        currentMode = newMode;
+        updateModeUI(currentMode);
+        
+        chrome.storage.local.set({ mode: currentMode }, () => {
+          console.log(`Mode changed to: ${currentMode}`);
+          updateProxyState();
+        });
+      }
+    });
+  });
+
+  // Open detailed settings
+  openSettingsButton.addEventListener("click", () => {
+    chrome.tabs.create({ url: "settings.html" });
+  });
+
+  // Show current rules
+  showRulesButton.addEventListener("click", () => {
+    const currentRules = currentMode === "whitelist" ? whitelistRawRules : blacklistRawRules;
+    const ruleCount = currentMode === "whitelist" ? whitelistRules.length : blacklistRules.length;
+    
+    let message = `当前使用${currentMode === "whitelist" ? "白名单" : "黑名单"}模式，共${ruleCount}条有效规则。`;
+    
+    if (ruleCount > 0) {
+      message += "\n\n有效规则列表：\n" + 
+        (currentMode === "whitelist" ? whitelistRules : blacklistRules).join("\n");
+    } else {
+      message += "\n\n暂无有效规则，请在详细设置中添加。";
+    }
+    
+    alert(message);
+  });
+
+  // Update mode UI
+  function updateModeUI(mode) {
+    modeOptions.forEach(option => {
+      if (option.getAttribute("data-mode") === mode) {
+        option.classList.add("active");
+      } else {
+        option.classList.remove("active");
+      }
+    });
+  }
+
+  // Update proxy state
+  function updateProxyState() {
+    if (proxyEnabled) {
+      // Get current rules based on mode
+      const rules = currentMode === "whitelist" ? whitelistRules : blacklistRules;
+      
+      // Set PAC script
+      chrome.runtime.sendMessage({
+        action: "updateProxy",
+        proxyEnabled: true,
+        proxyUrl: proxyUrl,
+        rules: rules,
+        mode: currentMode
+      }, (response) => {
+        console.log("Proxy update response:", response);
+      });
+    } else {
+      // Disable proxy
+      chrome.runtime.sendMessage({
+        action: "updateProxy",
+        proxyEnabled: false
+      }, (response) => {
+        console.log("Proxy disable response:", response);
+      });
+    }
+  }
+});

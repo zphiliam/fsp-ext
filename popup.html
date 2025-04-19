@@ -2,31 +2,213 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>动态代理设置</title>
+  <title>FastSimpleProxy</title>
   <style>
-    body { width: 400px; padding: 10px; font-family: Arial; }
-    textarea { width: 100%; height: 150px; resize: vertical; }
-    input[type="text"] { width: 100%; padding: 5px; margin: 5px 0; }
-    button { margin: 10px 5px; padding: 5px 10px; }
-    .mode { display: flex; justify-content: space-between; }
-    label { margin-right: 10px; }
-    p { font-size: 14px; }
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --success: #10b981;
+      --danger: #ef4444;
+      --bg: #f9fafb;
+      --card-bg: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+    }
+
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      background-color: var(--primary);
+      border-radius: 8px;
+      margin-right: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      margin-bottom: 16px;
+    }
+
+    .proxy-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .status-label {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .proxy-url {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .mode-selector {
+      display: flex;
+      background-color: var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .mode-option {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .mode-option.active {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      padding: 10px 0;
+      text-align: center;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .primary-button {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .primary-button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .secondary-button {
+      background-color: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .secondary-button:hover {
+      background-color: var(--bg);
+    }
   </style>
 </head>
 <body>
-  <h3>代理规则设置</h3>
-  <p>代理地址格式：http://host:port 或 https://host:port</p>
-  <input type="text" id="proxyUrl" placeholder="http://localhost:1080">
-  <p>从 URL 加载规则（如 https://example.com/rules.txt），点击加载后显示在下方</p>
-  <input type="text" id="rulesUrl" placeholder="https://example.com/rules.txt">
-  <button id="fetchRules">加载规则</button>
-  <p>每行一个规则，如 *.example.com（包含子域名），api*.com（匹配 api1.com）。仅支持字母、数字、*、?、-、.。以 #, ;, //, [ 开头为注释，仅显示，不影响代理。</p>
-  <div class="mode">
-    <label><input type="radio" name="mode" value="whitelist" checked> 白名单（匹配不代理）</label>
-    <label><input type="radio" name="mode" value="blacklist"> 黑名单（匹配代理）</label>
+  <div class="container">
+    <div class="header">
+      <div class="logo">F</div>
+      <h1 class="title">FastSimpleProxy</h1>
+    </div>
+
+    <div class="card">
+      <div class="proxy-status">
+        <span class="status-label">启用代理</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="proxyEnabled" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="proxy-url" id="proxyUrlDisplay">http://localhost:7890</div>
+    </div>
+
+    <div class="mode-selector">
+      <div class="mode-option active" data-mode="whitelist">白名单模式</div>
+      <div class="mode-option" data-mode="blacklist">黑名单模式</div>
+    </div>
+
+    <button class="button primary-button" id="openSettings">详细设置</button>
+    <div style="height: 8px;"></div>
+    <button class="button secondary-button" id="showRules">查看当前规则</button>
   </div>
-  <textarea id="rules" placeholder="*.example.com\n# comment"></textarea>
-  <button id="save">保存</button>
+
   <script src="popup.js"></script>
 </body>
 </html>
