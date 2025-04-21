@@ -375,9 +375,20 @@ function updateIconForTab(tabId, url) {
     }
   }
 
-  chrome.action.setIcon({ imageData: newIcon, tabId });
-  chrome.action.setTitle({ title: newIcon === proxyIcon ? proxyTitle : defaultTitle, tabId });
-  console.log(`Icon updated to ${newIcon === proxyIcon ? "proxy" : "default"} for tab ${tabId}, url: ${url}`);
+  chrome.action.setIcon({ imageData: newIcon, tabId },
+    function() {
+      if (chrome.runtime.lastError) {
+        console.log("setIcon error: ", chrome.runtime.lastError.message);
+      } else {
+        // console.log("setIcon success");
+        chrome.action.setTitle({ title: newIcon === proxyIcon ? proxyTitle : defaultTitle, tabId });
+        console.log(`Icon updated to ${newIcon === proxyIcon ? "proxy" : "default"} for tab ${tabId}, url: ${url}`);
+      }
+    }
+  );
+  
+
+  
 }
 
 // Listen for tab activation
