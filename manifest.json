@@ -4,6 +4,7 @@
     "version": "1.1",
     "description": "根据黑白名单动态设置代理，支持通配符规则",
     "permissions": [
+      "alarms",
       "proxy",
       "storage",
       "tabs",

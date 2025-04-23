@@ -12,6 +12,19 @@ let defaultIcon = null;
 let proxyTitle = "当前网页使用了代理";
 let defaultTitle = "当前网页未使用代理";
 
+// 防止 worker 休眠
+chrome.alarms.clearAll(() => {
+  console.log("Cleared all alarms");
+});
+// Create a heartbeat alarm to keep the background script alive
+chrome.alarms.create('heartbeat', { periodInMinutes: 2 });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'heartbeat') {
+    console.log('Heartbeat at:', new Date());
+    // chrome.storage.local.set({ lastHeartbeat: Date.now() });
+  }
+});
 // Initialize extension
 function init() {
   createIcons();
