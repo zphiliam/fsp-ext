@@ -1,3 +1,4 @@
+<!-- settings.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -196,6 +197,78 @@
       justify-content: space-between;
       margin-top: 24px;
     }
+
+    .badge {
+      display: inline-block;
+      background-color: var(--primary);
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      overflow: auto;
+    }
+    
+    .modal-content {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      width: 80%;
+      max-width: 800px;
+      margin: 5% auto;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .close-modal {
+      font-size: 24px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+    }
+
+    .rules-preview {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      background-color: #f8f9fa;
+    }
+    
+    .rules-stats {
+      margin-top: 12px;
+      margin-bottom: 16px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -225,16 +298,17 @@
       
       <div class="tab-content active" id="whitelist-tab">
         <div class="form-group">
-          <label class="form-label" for="whitelistRulesUrl">从 URL 加载白名单规则</label>
+          <label class="form-label" for="whitelistRulesUrl">从 URL 加载白名单规则 <span id="whitelistUrlRulesCount" class="badge hidden">0</span></label>
           <div class="input-group">
             <input type="text" id="whitelistRulesUrl" placeholder="https://example.com/rules.txt">
             <button class="button secondary-button" id="fetchWhitelistRules">加载</button>
+            <button class="button secondary-button" id="previewWhitelistRules">预览</button>
           </div>
-          <div class="help-text">从远程 URL 加载规则，将替换当前规则</div>
+          <div class="help-text">从远程 URL 加载规则，这些规则将与下方手动编辑的规则合并使用</div>
         </div>
         
         <div class="form-group">
-          <label class="form-label" for="whitelistRules">白名单规则</label>
+          <label class="form-label" for="whitelistRules">手动编辑白名单规则</label>
           <textarea id="whitelistRules" placeholder=".example.com&#10;# 注释示例"></textarea>
           <div class="help-text">每行一个规则，特殊匹配格式：
             <br>- <code>.example.com</code>：同时匹配域名本身及所有子域名(如 example.com 或 sub.example.com)
@@ -246,16 +320,17 @@
       
       <div class="tab-content" id="blacklist-tab">
         <div class="form-group">
-          <label class="form-label" for="blacklistRulesUrl">从 URL 加载黑名单规则</label>
+          <label class="form-label" for="blacklistRulesUrl">从 URL 加载黑名单规则 <span id="blacklistUrlRulesCount" class="badge hidden">0</span></label>
           <div class="input-group">
             <input type="text" id="blacklistRulesUrl" placeholder="https://example.com/rules.txt">
             <button class="button secondary-button" id="fetchBlacklistRules">加载</button>
+            <button class="button secondary-button" id="previewBlacklistRules">预览</button>
           </div>
-          <div class="help-text">从远程 URL 加载规则，将替换当前规则</div>
+          <div class="help-text">从远程 URL 加载规则，这些规则将与下方手动编辑的规则合并使用</div>
         </div>
         
         <div class="form-group">
-          <label class="form-label" for="blacklistRules">黑名单规则</label>
+          <label class="form-label" for="blacklistRules">手动编辑黑名单规则</label>
           <textarea id="blacklistRules" placeholder=".example.com&#10;# 注释示例"></textarea>
           <div class="help-text">每行一个规则，特殊匹配格式：
             <br>- <code>.example.com</code>：同时匹配域名本身及所有子域名(如 example.com 或 sub.example.com)
@@ -268,6 +343,22 @@
       <div class="actions">
         <button class="button secondary-button" id="backToPopup">返回</button>
         <button class="button primary-button" id="saveSettings">保存设置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Preview Modal -->
+  <div id="rulesPreviewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="previewModalTitle">规则预览</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="rules-stats" id="rulesStats"></div>
+      <div class="rules-preview" id="rulesPreviewContent"></div>
+      <div class="actions" style="margin-top: 16px;">
+        <button class="button secondary-button close-modal">关闭</button>
+        <button class="button primary-button" id="applyRules">应用规则</button>
       </div>
     </div>
   </div>

@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let blacklistRules = [];
   let whitelistRawRules = "";
   let blacklistRawRules = "";
+  let whitelistUrlRulesParsed = [];
+  let blacklistUrlRulesParsed = [];
 
   // Load saved configuration
   chrome.storage.local.get([
@@ -22,7 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "whitelistRules", 
     "blacklistRules", 
     "whitelistRawRules", 
-    "blacklistRawRules"
+    "blacklistRawRules",
+    "whitelistUrlRulesParsed",
+    "blacklistUrlRulesParsed"
   ], (data) => {
     console.log("Loading popup config...");
     
@@ -47,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log(`Loaded proxy: ${proxyUrl}`);
     }
     
-    // Load rules
+    // Load manual rules
     if (data.whitelistRules) {
       whitelistRules = data.whitelistRules;
       console.log(`Loaded whitelist rules: ${whitelistRules.length} rules`);
@@ -64,6 +68,23 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (data.blacklistRawRules) {
       blacklistRawRules = data.blacklistRawRules;
+    }
+    
+    // Load URL rules
+    if (data.whitelistUrlRulesParsed) {
+      whitelistUrlRulesParsed = data.whitelistUrlRulesParsed;
+      console.log(`Loaded whitelist URL rules: ${whitelistUrlRulesParsed.length} rules`);
+    }
+    
+    if (data.blacklistUrlRulesParsed) {
+      blacklistUrlRulesParsed = data.blacklistUrlRulesParsed;
+      console.log(`Loaded blacklist URL rules: ${blacklistUrlRulesParsed.length} rules`);
+    }
+    
+    // Make Show Rules button visible if we have rules
+    if ((currentMode === "whitelist" && (whitelistRules.length > 0 || whitelistUrlRulesParsed.length > 0)) || 
+        (currentMode === "blacklist" && (blacklistRules.length > 0 || blacklistUrlRulesParsed.length > 0))) {
+      showRulesButton.classList.remove("hidden");
     }
     
     // Update proxy state
@@ -92,6 +113,14 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set({ mode: currentMode }, () => {
           console.log(`Mode changed to: ${currentMode}`);
           updateProxyState();
+          
+          // Update Show Rules button visibility based on new mode
+          if ((currentMode === "whitelist" && (whitelistRules.length > 0 || whitelistUrlRulesParsed.length > 0)) || 
+              (currentMode === "blacklist" && (blacklistRules.length > 0 || blacklistUrlRulesParsed.length > 0))) {
+            showRulesButton.classList.remove("hidden");
+          } else {
+            showRulesButton.classList.add("hidden");
+          }
         });
       }
     });
@@ -104,15 +133,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Show current rules
   showRulesButton.addEventListener("click", () => {
-    const currentRules = currentMode === "whitelist" ? whitelistRawRules : blacklistRawRules;
-    const ruleCount = currentMode === "whitelist" ? whitelistRules.length : blacklistRules.length;
+    // Get combined rules based on current mode
+    const manualRules = currentMode === "whitelist" ? whitelistRules : blacklistRules;
+    const urlRules = currentMode === "whitelist" ? whitelistUrlRulesParsed : blacklistUrlRulesParsed;
+    const combinedRules = [...manualRules, ...urlRules];
     
-    let message = `当前使用${currentMode === "whitelist" ? "白名单" : "黑名单"}模式，共${ruleCount}条有效规则。`;
+    // Remove duplicates
+    const uniqueRules = [...new Set(combinedRules)];
     
-    if (ruleCount > 0) {
-      message += "\n\n有效规则列表：\n" + 
-        (currentMode === "whitelist" ? whitelistRules : blacklistRules).join("\n");
-    } else {
+    let message = `当前使用${currentMode === "whitelist" ? "白名单" : "黑名单"}模式，共${uniqueRules.length}条有效规则。`;
+    
+    if (manualRules.length > 0) {
+      message += `\n\n手动编辑规则（${manualRules.length}条）：\n` + manualRules.join("\n");
+    }
+    
+    if (urlRules.length > 0) {
+      message += `\n\nURL加载规则（${urlRules.length}条）：\n` + urlRules.join("\n");
+    }
+    
+    if (uniqueRules.length === 0) {
       message += "\n\n暂无有效规则，请在详细设置中添加。";
     }
     
@@ -133,15 +172,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // Update proxy state
   function updateProxyState() {
     if (proxyEnabled) {
-      // Get current rules based on mode
-      const rules = currentMode === "whitelist" ? whitelistRules : blacklistRules;
+      // Get combined rules based on mode
+      const manualRules = currentMode === "whitelist" ? whitelistRules : blacklistRules;
+      const urlRules = currentMode === "whitelist" ? whitelistUrlRulesParsed : blacklistUrlRulesParsed;
+      const combinedRules = [...manualRules, ...urlRules];
+      
+      // Remove duplicates
+      const uniqueRules = [...new Set(combinedRules)];
       
       // Set PAC script
       chrome.runtime.sendMessage({
         action: "updateProxy",
         proxyEnabled: true,
         proxyUrl: proxyUrl,
-        rules: rules,
+        rules: uniqueRules,
         mode: currentMode
       }, (response) => {
         console.log("Proxy update response:", response);

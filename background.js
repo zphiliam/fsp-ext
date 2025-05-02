@@ -1,3 +1,4 @@
+// background.js
 // Default proxy settings
 let proxyUrl = "http://localhost:7890";
 let whitelistRules = [];
@@ -43,6 +44,8 @@ function loadConfig() {
     "proxyUrl", 
     "whitelistRules", 
     "blacklistRules", 
+    "whitelistUrlRulesParsed",
+    "blacklistUrlRulesParsed",
     "mode"
   ], (data) => {
     console.log("Loading background config...");
@@ -57,15 +60,37 @@ function loadConfig() {
       console.log(`Loaded proxy: ${proxyUrl}`);
     }
     
+    // Load whitelist rules (combine manual and URL rules)
+    let manualWhitelistRules = [];
     if (data.whitelistRules) {
-      whitelistRules = data.whitelistRules.filter(isValidPattern);
-      console.log(`Loaded whitelist rules: ${whitelistRules.length} rules`);
+      manualWhitelistRules = data.whitelistRules.filter(isValidPattern);
+      console.log(`Loaded manual whitelist rules: ${manualWhitelistRules.length} rules`);
     }
     
-    if (data.blacklistRules) {
-      blacklistRules = data.blacklistRules.filter(isValidPattern);
-      console.log(`Loaded blacklist rules: ${blacklistRules.length} rules`);
+    let urlWhitelistRules = [];
+    if (data.whitelistUrlRulesParsed) {
+      urlWhitelistRules = data.whitelistUrlRulesParsed.filter(isValidPattern);
+      console.log(`Loaded URL whitelist rules: ${urlWhitelistRules.length} rules`);
     }
+    
+    whitelistRules = [...manualWhitelistRules, ...urlWhitelistRules];
+    console.log(`Combined whitelist rules: ${whitelistRules.length} rules`);
+    
+    // Load blacklist rules (combine manual and URL rules)
+    let manualBlacklistRules = [];
+    if (data.blacklistRules) {
+      manualBlacklistRules = data.blacklistRules.filter(isValidPattern);
+      console.log(`Loaded manual blacklist rules: ${manualBlacklistRules.length} rules`);
+    }
+    
+    let urlBlacklistRules = [];
+    if (data.blacklistUrlRulesParsed) {
+      urlBlacklistRules = data.blacklistUrlRulesParsed.filter(isValidPattern);
+      console.log(`Loaded URL blacklist rules: ${urlBlacklistRules.length} rules`);
+    }
+    
+    blacklistRules = [...manualBlacklistRules, ...urlBlacklistRules];
+    console.log(`Combined blacklist rules: ${blacklistRules.length} rules`);
     
     if (data.mode) {
       mode = data.mode;
@@ -253,18 +278,77 @@ chrome.storage.onChanged.addListener((changes, area) => {
       needsUpdate = true;
     }
     
-    if (changes.whitelistRules && mode === "whitelist") {
-      whitelistRules = (changes.whitelistRules.newValue || []).filter(isValidPattern);
-      currentRules = whitelistRules;
-      console.log(`Whitelist rules updated: ${whitelistRules.length} rules`);
-      needsUpdate = true;
+    let whitelistChanged = false;
+    let blacklistChanged = false;
+    
+    // Check for manual whitelist rules changes
+    if (changes.whitelistRules) {
+      whitelistChanged = true;
     }
     
-    if (changes.blacklistRules && mode === "blacklist") {
-      blacklistRules = (changes.blacklistRules.newValue || []).filter(isValidPattern);
-      currentRules = blacklistRules;
-      console.log(`Blacklist rules updated: ${blacklistRules.length} rules`);
-      needsUpdate = true;
+    // Check for URL whitelist rules changes
+    if (changes.whitelistUrlRulesParsed) {
+      whitelistChanged = true;
+    }
+    
+    // Check for manual blacklist rules changes
+    if (changes.blacklistRules) {
+      blacklistChanged = true;
+    }
+    
+    // Check for URL blacklist rules changes
+    if (changes.blacklistUrlRulesParsed) {
+      blacklistChanged = true;
+    }
+    
+    // If relevant rules changed, load them again
+    if (whitelistChanged || blacklistChanged) {
+      chrome.storage.local.get([
+        "whitelistRules", 
+        "blacklistRules",
+        "whitelistUrlRulesParsed",
+        "blacklistUrlRulesParsed"
+      ], (data) => {
+        // Update whitelist rules if changed
+        if (whitelistChanged) {
+          let manualRules = [];
+          if (data.whitelistRules) {
+            manualRules = data.whitelistRules.filter(isValidPattern);
+          }
+          
+          let urlRules = [];
+          if (data.whitelistUrlRulesParsed) {
+            urlRules = data.whitelistUrlRulesParsed.filter(isValidPattern);
+          }
+          
+          whitelistRules = [...manualRules, ...urlRules];
+          console.log(`Updated whitelist rules: ${whitelistRules.length} total rules`);
+        }
+        
+        // Update blacklist rules if changed
+        if (blacklistChanged) {
+          let manualRules = [];
+          if (data.blacklistRules) {
+            manualRules = data.blacklistRules.filter(isValidPattern);
+          }
+          
+          let urlRules = [];
+          if (data.blacklistUrlRulesParsed) {
+            urlRules = data.blacklistUrlRulesParsed.filter(isValidPattern);
+          }
+          
+          blacklistRules = [...manualRules, ...urlRules];
+          console.log(`Updated blacklist rules: ${blacklistRules.length} total rules`);
+        }
+        
+        // Update current rules based on mode
+        currentRules = mode === "whitelist" ? whitelistRules : blacklistRules;
+        
+        // Update proxy settings if enabled
+        if (proxyEnabled) {
+          updateProxySettings();
+        }
+      });
     }
     
     if (changes.mode) {
@@ -399,9 +483,6 @@ function updateIconForTab(tabId, url) {
       }
     }
   );
-  
-
-  
 }
 
 // Listen for tab activation
