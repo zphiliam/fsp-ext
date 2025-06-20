@@ -13,6 +13,9 @@ let defaultIcon = null;
 let proxyTitle = "当前网页使用了代理";
 let defaultTitle = "当前网页未使用代理";
 
+// Icon update debouncing
+let iconUpdateTimeouts = new Map();
+
 // 防止 worker 休眠
 chrome.alarms.clearAll(() => {
   console.log("Cleared all alarms");
@@ -30,8 +33,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 function init() {
   createIcons();
   // Set default icon
-  chrome.action.setIcon({ imageData: defaultIcon });
-  console.log(`Default icon set for all tabs on initialization`);
+  chrome.action.setIcon({ imageData: defaultIcon })
+    .then(() => {
+      console.log(`Default icon set for all tabs on initialization`);
+    })
+    .catch((error) => {
+      console.error("Failed to set default icon on initialization:", error);
+    });
   
   // Load saved configuration
   loadConfig();
@@ -443,8 +451,24 @@ function evaluateProxyForUrl(url, host) {
   return isProxy ? `PROXY ${proxyHost}:${proxyPort}` : "DIRECT";
 }
 
-// Update icon for tab
+// Update icon for tab with debouncing
 function updateIconForTab(tabId, url) {
+  // Clear existing timeout for this tab
+  if (iconUpdateTimeouts.has(tabId)) {
+    clearTimeout(iconUpdateTimeouts.get(tabId));
+  }
+  
+  // Set a new timeout for this tab
+  const timeoutId = setTimeout(() => {
+    doUpdateIconForTab(tabId, url);
+    iconUpdateTimeouts.delete(tabId);
+  }, 100); // 100ms debounce
+  
+  iconUpdateTimeouts.set(tabId, timeoutId);
+}
+
+// Actual icon update function
+function doUpdateIconForTab(tabId, url) {
   let newIcon;
   
   // Handle special URLs (about:blank, chrome://, etc.)
@@ -472,17 +496,19 @@ function updateIconForTab(tabId, url) {
     }
   }
 
-  chrome.action.setIcon({ imageData: newIcon, tabId },
-    function() {
-      if (chrome.runtime.lastError) {
-        console.log("setIcon error: ", chrome.runtime.lastError.message);
-      } else {
-        // console.log("setIcon success");
-        chrome.action.setTitle({ title: newIcon === proxyIcon ? proxyTitle : defaultTitle, tabId });
-        console.log(`Icon updated to ${newIcon === proxyIcon ? "proxy" : "default"} for tab ${tabId}, url: ${url}`);
-      }
-    }
-  );
+  chrome.action.setIcon({ imageData: newIcon, tabId })
+    .then(() => {
+      chrome.action.setTitle({ title: newIcon === proxyIcon ? proxyTitle : defaultTitle, tabId });
+      console.log(`Icon updated to ${newIcon === proxyIcon ? "proxy" : "default"} for tab ${tabId}, url: ${url}`);
+    })
+    .catch((error) => {
+      console.error("setIcon error: ", error);
+      // Fallback: try setting icon without tabId
+      chrome.action.setIcon({ imageData: newIcon })
+        .catch((fallbackError) => {
+          console.error("Fallback setIcon also failed: ", fallbackError);
+        });
+    });
 }
 
 // Listen for tab activation
